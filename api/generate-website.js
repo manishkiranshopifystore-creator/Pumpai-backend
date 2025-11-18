@@ -126,21 +126,31 @@ export default async function handler(req, res) {
 
     const data = await groqResponse.json();
 
-    const rawText =
-      data?.choices?.[0]?.message?.content?.trim() || "{}";
+// Get the raw text from Groq
+let rawText = data?.choices?.[0]?.message?.content?.trim() || "{}";
 
-    let json;
-    try {
-      json = JSON.parse(rawText);
-    } catch (err) {
-      console.error("Failed to parse JSON from Groq:", rawText);
-      res.status(500).json({ error: "AI returned invalid JSON", rawText });
-      return;
-    }
+// Try to clean it: keep only the JSON part between the first "{" and the last "}"
+let cleaned = rawText.trim();
 
-    res.status(200).json(json);
-  } catch (err) {
-    console.error("Groq API error:", err);
-    res.status(500).json({ error: "Failed to generate website content" });
-  }
+// If the model ever returns ```json ... ``` style, strip the backticks
+if (cleaned.startsWith("```")) {
+  cleaned = cleaned.replace(/```[a-zA-Z]*/g, "").replace(/```/g, "").trim();
 }
+
+const firstBrace = cleaned.indexOf("{");
+const lastBrace = cleaned.lastIndexOf("}");
+
+if (firstBrace !== -1 && lastBrace !== -1) {
+  cleaned = cleaned.slice(firstBrace, lastBrace + 1);
+}
+
+let json;
+try {
+  json = JSON.parse(cleaned);
+} catch (err) {
+  console.error("Failed to parse JSON from Groq:", cleaned);
+  res.status(500).json({ error: "AI returned invalid JSON", rawText: cleaned });
+  return;
+}
+
+res.status(200).json(json);
