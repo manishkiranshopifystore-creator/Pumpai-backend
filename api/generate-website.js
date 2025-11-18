@@ -12,7 +12,7 @@ You will be given:
 Return ONLY a valid JSON object in this format, with no extra text:
 
 {
-  "theme": "", 
+  "theme": "",
   "hero_title": "",
   "hero_subtitle": "",
   "tagline": "",
@@ -45,23 +45,23 @@ Return ONLY a valid JSON object in this format, with no extra text:
 }
 
 Rules:
-- hero_title: short, bold, 3–7 words.
-- hero_subtitle: 1 short sentence that explains the coin or brand.
-- tagline: under 12 words, feels like a slogan.
-- features: talk about utility, community, AI aspect, Pump.fun readiness, etc.
-- lore_paragraphs: 2–3 fun story paragraphs.
-- tokenomics_points: mention things like 1B supply, 3% dev, 97% community, 0% tax if relevant.
-- roadmap_phases: Phase 1 (launch), Phase 2 (community + memes), Phase 3 (DEX / integrations).
-- faq: common degen questions like “Is this a rug?”, “What does {ticker} actually do?”, “How does Pump AI help?”, “Can the buy link change later?”
+- hero_title must be short (3–7 words)
+- hero_subtitle must be one short sentence
+- tagline must be under 12 words
+- features array must contain 3 items
+- lore_paragraphs must contain 2–3 items
+- tokenomics_points must contain 3 items
+- roadmap_phases must contain 3 items
+- faq must contain 4 items
 
 Add rules for the new "theme" field:
-The theme must be one of: "frog", "ai", "cute", "degen", "simple".
-Select the theme based on project_name, ticker, and vibe:
-- If project references frogs, pepe, hop → theme = "frog"
-- If it sounds AI/robot/tech → theme = "ai"
-- If it sounds adorable or playful → theme = "cute"
-- If it is chaotic/hype/meme → theme = "degen"
-- Default fallback: "simple"
+- The theme must be one of: "frog", "ai", "cute", "degen", "simple".
+- Select theme based on project_name, ticker, and vibe:
+  - If project references frogs, pepe, hop → theme = "frog"
+  - If project references robots/AI/tech → theme = "ai"
+  - If project sounds cute/adorable → theme = "cute"
+  - If project is chaotic/hype/meme → theme = "degen"
+  - Otherwise → theme = "simple"
 
 Tone:
 - vibe = "degen": more degen slang but still readable.
@@ -70,12 +70,12 @@ Tone:
 - vibe = "frog": pepe / frog meme style.
 - vibe = "simple": straightforward, clean.
 
-Output must be STRICT JSON. 
+Output must be STRICT JSON.
 No markdown, no comments, no additional text outside the JSON object.
 `;
 
 export default async function handler(req, res) {
-  // Basic CORS so tools / frontends can call it
+  // Basic CORS so browser tools and Orchid can call it
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
@@ -114,7 +114,7 @@ export default async function handler(req, res) {
           "Authorization": `Bearer ${process.env.GROQ_API_KEY}`
         },
         body: JSON.stringify({
-          model: "llama-3.1-8b-instant", // or another Groq chat model
+          model: "llama-3.1-8b-instant", // or any Groq chat model
           messages: [
             { role: "system", content: SYSTEM_PROMPT },
             { role: "user", content: bodyForModel }
@@ -126,31 +126,34 @@ export default async function handler(req, res) {
 
     const data = await groqResponse.json();
 
-// Get the raw text from Groq
-let rawText = data?.choices?.[0]?.message?.content?.trim() || "{}";
+    // Extract the raw text
+    let rawText = data?.choices?.[0]?.message?.content || "{}";
 
-// Try to clean it: keep only the JSON part between the first "{" and the last "}"
-let cleaned = rawText.trim();
+    // Clean common wrappers like ```json ... ```
+    let cleaned = rawText.trim();
+    if (cleaned.startsWith("```")) {
+      cleaned = cleaned.replace(/```[a-zA-Z]*/g, "").replace(/```/g, "").trim();
+    }
 
-// If the model ever returns ```json ... ``` style, strip the backticks
-if (cleaned.startsWith("```")) {
-  cleaned = cleaned.replace(/```[a-zA-Z]*/g, "").replace(/```/g, "").trim();
+    // Keep only the content between the first "{" and last "}"
+    const firstBrace = cleaned.indexOf("{");
+    const lastBrace = cleaned.lastIndexOf("}");
+    if (firstBrace !== -1 && lastBrace !== -1) {
+      cleaned = cleaned.slice(firstBrace, lastBrace + 1);
+    }
+
+    let json;
+    try {
+      json = JSON.parse(cleaned);
+    } catch (err) {
+      console.error("Failed to parse JSON from Groq:", cleaned);
+      res.status(500).json({ error: "AI returned invalid JSON", rawText: cleaned });
+      return;
+    }
+
+    res.status(200).json(json);
+  } catch (err) {
+    console.error("Groq API error:", err);
+    res.status(500).json({ error: "Failed to generate website content" });
+  }
 }
-
-const firstBrace = cleaned.indexOf("{");
-const lastBrace = cleaned.lastIndexOf("}");
-
-if (firstBrace !== -1 && lastBrace !== -1) {
-  cleaned = cleaned.slice(firstBrace, lastBrace + 1);
-}
-
-let json;
-try {
-  json = JSON.parse(cleaned);
-} catch (err) {
-  console.error("Failed to parse JSON from Groq:", cleaned);
-  res.status(500).json({ error: "AI returned invalid JSON", rawText: cleaned });
-  return;
-}
-
-res.status(200).json(json);
