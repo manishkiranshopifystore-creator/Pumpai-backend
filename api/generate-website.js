@@ -64,7 +64,17 @@ Output must be STRICT JSON.
 No markdown, no comments, no additional text outside the JSON object.
 `;
 
-module.exports = async (req, res) => {
+export default async function handler(req, res) {
+  // Basic CORS so tools / frontends can call it
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+
+  if (req.method === "OPTIONS") {
+    res.status(200).end();
+    return;
+  }
+
   if (req.method !== "POST") {
     res.status(405).json({ error: "Method not allowed" });
     return;
@@ -94,7 +104,7 @@ module.exports = async (req, res) => {
           "Authorization": `Bearer ${process.env.GROQ_API_KEY}`
         },
         body: JSON.stringify({
-          model: "llama-3.1-8b-instant", // you can change to another Groq chat model if needed
+          model: "llama-3.1-8b-instant", // or another Groq chat model
           messages: [
             { role: "system", content: SYSTEM_PROMPT },
             { role: "user", content: bodyForModel }
@@ -123,4 +133,4 @@ module.exports = async (req, res) => {
     console.error("Groq API error:", err);
     res.status(500).json({ error: "Failed to generate website content" });
   }
-};
+}
