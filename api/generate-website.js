@@ -12,6 +12,7 @@ You will be given:
 Return ONLY a valid JSON object in this format, with no extra text:
 
 {
+  "theme": "", 
   "hero_title": "",
   "hero_subtitle": "",
   "tagline": "",
@@ -52,6 +53,15 @@ Rules:
 - tokenomics_points: mention things like 1B supply, 3% dev, 97% community, 0% tax if relevant.
 - roadmap_phases: Phase 1 (launch), Phase 2 (community + memes), Phase 3 (DEX / integrations).
 - faq: common degen questions like “Is this a rug?”, “What does {ticker} actually do?”, “How does Pump AI help?”, “Can the buy link change later?”
+
+Add rules for the new "theme" field:
+The theme must be one of: "frog", "ai", "cute", "degen", "simple".
+Select the theme based on project_name, ticker, and vibe:
+- If project references frogs, pepe, hop → theme = "frog"
+- If it sounds AI/robot/tech → theme = "ai"
+- If it sounds adorable or playful → theme = "cute"
+- If it is chaotic/hype/meme → theme = "degen"
+- Default fallback: "simple"
 
 Tone:
 - vibe = "degen": more degen slang but still readable.
